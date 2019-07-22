@@ -1,4 +1,4 @@
-# LS Ecommerce - Magento Integration
+# LS Ecommerce - Magento Integration (Under Development)
 
 ## Compatibility
 1. Magento Commerce/Enterprise 2.3.0 or later
@@ -7,7 +7,7 @@
 
 ## Installation:
 
-1. Navigate to your magento2 installation directory and run `composer require "lsretail/lsmag-two"`
+1. Navigate to your magento2 installation directory and run `composer require "lsretail/lsmag-enterprise"`
 2. Run `composer update` to install all the dependencies it needs.
 3. To enable all our modules, run command from command line, `php bin/magento module:enable Ls_Commerce`
 followed by `php bin/magento setup:upgrade ` and  `php bin/magento setup:di:compile` from Magento 2 instance so that it can update the magento2 database with our modules schema and interceptor files.

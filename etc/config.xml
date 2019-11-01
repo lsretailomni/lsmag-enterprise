@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <magento_giftregistry>
+            <general>
+                <enabled>0</enabled>
+            </general>
+        </magento_giftregistry>
+        <magento_reward>
+            <general>
+                <enabled>0</enabled>
+                <is_enabled_on_front>0</is_enabled_on_front>
+                <publish_history>0</publish_history>
+            </general>
+        </magento_reward>
+        <customer>
+            <magento_customerbalance>
+                <is_enabled>0</is_enabled>
+                <show_history>0</show_history>
+            </magento_customerbalance>
+        </customer>
+    </default>
+</config>

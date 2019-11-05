@@ -4,5 +4,9 @@
 <body>
     <!-- Gift card link -->
     <referenceBlock name="customer-account-navigation-gift-card-link" remove="true"/>
+    <!-- Store credit -->
+    <referenceBlock name="customer-account-navigation-customer-balance-link" remove="true"/>
+    <!-- Reward points -->
+    <referenceBlock name="customer-account-navigation-reward-link" remove="true"/>
 </body>
 </page>

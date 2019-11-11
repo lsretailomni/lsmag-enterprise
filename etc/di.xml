@@ -7,4 +7,10 @@
     <type name="Magento\Reward\Helper\Data">
         <plugin name="ls.reward.helper.data" type="Ls\Commerce\Plugin\RewardPlugin" sortOrder="10"/>
     </type>
+    <type name="Magento\GiftWrapping\Helper\Data">
+        <plugin name="ls.gift.wrapping.helper.data" type="Ls\Commerce\Plugin\GiftWrappingPlugin" sortOrder="10"/>
+    </type>
+    <type name="Magento\GiftMessage\Helper\Message">
+        <plugin name="ls.gift.message.helper.message" type="Ls\Commerce\Plugin\GiftMessagePlugin" sortOrder="10"/>
+    </type>
 </config>

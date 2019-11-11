@@ -4,6 +4,7 @@
     <body>
         <referenceContainer name="cart.summary">
             <referenceBlock name="checkout.cart.giftcardaccount" remove="true"/>
+            <referenceBlock name="checkout.cart.order.actions.gift_options" remove="true"/>
         </referenceContainer>
     </body>
 </page>

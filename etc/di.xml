@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <type name="Magento\CustomerBalance\Helper\Data">
+        <plugin name="ls.customer.balance.helper.data" type="Ls\Commerce\Plugin\CustomerBalancePlugin" sortOrder="10"/>
+    </type>
+    <type name="Magento\Reward\Helper\Data">
+        <plugin name="ls.reward.helper.data" type="Ls\Commerce\Plugin\RewardPlugin" sortOrder="10"/>
+    </type>
+    <type name="Magento\GiftWrapping\Helper\Data">
+        <plugin name="ls.gift.wrapping.helper.data" type="Ls\Commerce\Plugin\GiftWrappingPlugin" sortOrder="10"/>
+    </type>
+    <type name="Magento\GiftMessage\Helper\Message">
+        <plugin name="ls.gift.message.helper.message" type="Ls\Commerce\Plugin\GiftMessagePlugin" sortOrder="10"/>
+    </type>
+</config>

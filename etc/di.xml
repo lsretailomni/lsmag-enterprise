@@ -13,4 +13,7 @@
     <type name="Magento\GiftMessage\Helper\Message">
         <plugin name="ls.gift.message.helper.message" type="Ls\Commerce\Plugin\GiftMessagePlugin" sortOrder="10"/>
     </type>
+    <type name="Magento\Rma\Helper\Data">
+        <plugin name="ls.rma.helper.data" type="Ls\Commerce\Plugin\RmaPlugin" sortOrder="10"/>
+    </type>
 </config>

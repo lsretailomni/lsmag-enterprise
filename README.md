@@ -1,9 +1,9 @@
 # LS Ecommerce - Magento Integration (Under Development)
 
 ## Compatibility
-1. Magento Commerce/Enterprise 2.3.0 or later
-2. LS Central 13.05 or later
-3. LS Omni Server 3.7 or later
+1. Magento Commerce/Enterprise 2.3.3 or later
+2. LS Central 14.02
+3. LS Omni Server 4.5
 
 ## Installation:
 
@@ -18,3 +18,10 @@ followed by `php bin/magento setup:upgrade ` and  `php bin/magento setup:di:
 8. If your server is setup for cron, then you will see all the new crons created in the `cron_schedule` table if not, it means your server is not setup to schedule cron, to trigger the cron manually,run `php bin/magento cron:run from command line. 
 9. To Trigger the cron manually from admin panel, navigate to LS Retail -> Cron Listing from the left menu and click on the cron which needs to be run.
 10. To see if the data is replicated in the Magento completely or not, you can navigate to any Replication job from `LS Retail -> Replication` Status and there we can see the status with `Processed` or `Not Processed` in the grid.
+
+## Features by default Disabled
+1. Store Credit
+2. Rewards Points
+3. Gift Message
+4. Gift Wrapping
+5. Return Merchandise Authorization (RMA)

@@ -19,7 +19,7 @@ followed by `php bin/magento setup:upgrade ` and  `php bin/magento setup:di:
 9. To Trigger the cron manually from admin panel, navigate to LS Retail -> Cron Listing from the left menu and click on the cron which needs to be run.
 10. To check the status of data replicated from LS Central, navigate to any Replication job from `LS Retail -> Replication Status` and there we can see the list of all data along with status with `Processed` or `Not Processed` in the grid.  
 
-## Features by default Disabled
+## Features not supported for integration and are disabled by default
 1. Store Credit
 2. Rewards Points
 3. Gift Message

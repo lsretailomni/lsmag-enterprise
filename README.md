@@ -3,7 +3,7 @@
 ## Compatibility
 1. Magento Commerce/Enterprise 2.3.3 or later
 2. LS Central 14.02 or later
-3. LS Omni Server 4.5
+3. LS Omni Server 4.7
 
 ## Installation:
 

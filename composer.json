@@ -3,7 +3,7 @@
     "description": "LS Ecommerce - Magento Commerce integration with LS Central",
     "type": "magento2-module",
     "license": "proprietary",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "authors": [
         {
             "name": "LS Retail",
@@ -11,7 +11,7 @@
         }
     ],
     "require": {
-        "lsretail/lsmag-two": "^1.3.1"
+        "lsretail/lsmag-two": "^1.5.1"
     },
     "autoload": {
         "psr-4": {

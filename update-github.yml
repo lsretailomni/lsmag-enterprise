@@ -1,25 +1,14 @@
 trigger:
   branches:
     include:
-      - release
+      - master
 variables:
-  BRANCH_NAME: release
+  BRANCH_NAME: master
 steps:
   - checkout: self
-    fetchTags: true
-    fetchDepth: 0
-
-  - script: |
-      cd /home/vsts/work/1/s/
-      TAG_NAME=$(git describe --abbrev=0 --tags)
-      echo "##vso[task.setvariable variable=LATEST_TAG_NAME]$TAG_NAME"
-    displayName: 'Finding Latest Tag Name'
-    workingDirectory: $(System.DefaultWorkingDirectory)
-
   - script: |
       mkdir release && cd release
       git clone https://github.com/$(REPO_NAME).git .
-      git push https://$(USERNAME):$(PERSONAL_ACCESS_TOKEN)@github.com/$(REPO_NAME).git --delete $(BRANCH_NAME)
       git checkout -b $(BRANCH_NAME)
       git remote -v
       git rm -rf .
@@ -29,7 +18,5 @@ steps:
       git add --all
       git commit -m "Deployment $(Build.BuildNumber)"
       git push https://$(USERNAME):$(PERSONAL_ACCESS_TOKEN)@github.com/$(REPO_NAME).git $(BRANCH_NAME)
-      git tag -a "$(LATEST_TAG_NAME)" -m "Release $LAST_TAG_NAME"
-      git push https://$(USERNAME):$(PERSONAL_ACCESS_TOKEN)@github.com/$(REPO_NAME).git --tags
     displayName: 'Publishing Changes to Github Repository'
     workingDirectory: $(System.DefaultWorkingDirectory)

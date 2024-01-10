@@ -16,4 +16,7 @@
     <type name="Magento\Rma\Helper\Data">
         <plugin name="ls.rma.helper.data" type="Ls\Commerce\Plugin\RmaPlugin" sortOrder="10"/>
     </type>
+    <type name="Ls\Replication\Cron\ProductCreateTask">
+        <plugin name="gift_card_replication" type="Ls\Commerce\Plugin\Replication\Cron\ProductCreateTaskPlugin" sortOrder="10"/>
+    </type>
 </config>

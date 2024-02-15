@@ -3,7 +3,7 @@
 ## Compatibility:
 1. Magento Commerce/Enterprise 2.4.4 - current version
 2. LS Central 16.x - current version
-3. LS Commerce/Omni 4.14.x - current version
+3. LS Omni 4.14.x - current version
 4. [ LS eCommerce - Base package](https://github.com/lsretailomni/lsmag-two) - v2.6.0 or onwards
 
 ## Installation:

@@ -2,12 +2,12 @@
 
 namespace Ls\Commerce\Plugin\Replication\Cron;
 
+use Exception;
 use \Ls\Omni\Client\Ecommerce\Entity\Enum\ReplDiscountType;
+use \Ls\Replication\Logger\Logger;
 use \Ls\Replication\Model\ResourceModel\ReplDiscountSetup\CollectionFactory;
 use Magento\CatalogRule\Model\ResourceModel\Rule\CollectionFactory as RuleCollectionFactory;
 use Magento\CatalogRule\Model\RuleFactory;
-use Magento\GiftCard\Model\Catalog\Product\Type\Giftcard;
-use Magento\GiftCard\Model\Giftcard as GiftCardType;
 use Magento\Staging\Model\UpdateFactory;
 use Magento\Staging\Api\UpdateRepositoryInterface;
 use Magento\CatalogRule\Api\Data\RuleInterfaceFactory;
@@ -29,39 +29,55 @@ class DiscountCreateTaskPlugin
     public $replDiscountCollection;
 
     /**
-     * @var UpdateFactory 
+     * @var UpdateFactory
      */
     public $updateFactory;
     /**
-     * @var UpdateRepositoryInterface 
+     * @var UpdateRepositoryInterface
      */
     public $updateRepository;
 
     /**
-     * @var RuleCollectionFactory 
+     * @var RuleCollectionFactory
      */
     public $ruleCollectionFactory;
 
     /**
-     * @var CatalogRuleStagingInterface 
+     * @var CatalogRuleStagingInterface
      */
     public $catalogRuleStaging;
 
     /**
-     * @var ResourceRule 
+     * @var ResourceRule
      */
     public $resourceRule;
 
     /**
-     * @var RuleFactory 
+     * @var RuleFactory
      */
     public $ruleFactory;
 
     /**
-     * @var VersionManager 
+     * @var VersionManager
      */
     public $versionManager;
 
+    /**
+     * @var Logger
+     */
+    public $logger;
+
+    /**
+     * @param CollectionFactory $replDiscountCollection
+     * @param UpdateFactory $updateFactory
+     * @param UpdateRepositoryInterface $updateRepository
+     * @param RuleCollectionFactory $ruleCollectionFactory
+     * @param CatalogRuleStagingInterface $catalogRuleStaging
+     * @param ResourceRule $resourceRule
+     * @param RuleFactory $ruleFactory
+     * @param VersionManager $versionManager
+     * @param Logger $logger
+     */
     public function __construct(
         CollectionFactory $replDiscountCollection,
         UpdateFactory $updateFactory,
@@ -70,7 +86,8 @@ class DiscountCreateTaskPlugin
         CatalogRuleStagingInterface $catalogRuleStaging,
         ResourceRule $resourceRule,
         RuleFactory $ruleFactory,
-        VersionManager $versionManager
+        VersionManager $versionManager,
+        Logger $logger
     ) {
         $this->replDiscountCollection = $replDiscountCollection;
         $this->updateFactory          = $updateFactory;
@@ -80,9 +97,12 @@ class DiscountCreateTaskPlugin
         $this->resourceRule           = $resourceRule;
         $this->ruleFactory            = $ruleFactory;
         $this->versionManager         = $versionManager;
+        $this->logger                 = $logger;
     }
 
     /**
+     * After save plugin
+     *
      * @param $subject
      * @param $result
      * @param $replValidation
@@ -97,7 +117,8 @@ class DiscountCreateTaskPlugin
             return $result;
         }
         $navId          = $replValidation->getNavId();
-        $discountOffers = $this->getDiscountsByValidationPeriod($navId);
+        $scopeId        = $replValidation->getScopeId();
+        $discountOffers = $this->getDiscountsByValidationPeriod($navId, $scopeId);
 
         foreach ($discountOffers as $discountOffer) {
             $this->updateValidationDateTime($discountOffer->getOfferNo(), $replValidation);
@@ -124,9 +145,6 @@ class DiscountCreateTaskPlugin
                 $rowId  = $rule->getRowId();
                 $model  = $this->ruleFactory->create();
                 $this->resourceRule->load($model, $ruleId);
-                $ruleCollection = $this->ruleCollectionFactory->create();
-                $ruleCollection->addFieldToFilter('row_id', $rowId);
-
                 $activationUpdate = $this->updateFactory->create();
                 $activationUpdate->setName($rule->getName())
                     ->setStartTime(
@@ -135,23 +153,30 @@ class DiscountCreateTaskPlugin
                 if ($replValidation->getEndTime()) {
                     $activationUpdate->setEndTime($replValidation->getEndDate() . " " . $replValidation->getEndTime());
                 }
-                $activationUpdate = $this->updateRepository->save($activationUpdate);
-                $this->versionManager->setCurrentVersionId($activationUpdate->getId());
-                $this->catalogRuleStaging->schedule($model, $activationUpdate->getId());
+                try {
+                    $activationUpdate = $this->updateRepository->save($activationUpdate);
+                    $this->versionManager->setCurrentVersionId($activationUpdate->getId());
+                    $this->catalogRuleStaging->schedule($model, $activationUpdate->getId());
+                } catch (Exception $e) {
+                    $this->logger->debug($e->getMessage());
+                }
+
             }
         }
     }
 
     /**
      * Fetch offers based on validation period
-     * 
+     *
      * @param $navId
+     * @param $scopeId
      * @return array|\Ls\Replication\Model\ResourceModel\ReplDiscountSetup\Collection
      */
-    public function getDiscountsByValidationPeriod($navId)
+    public function getDiscountsByValidationPeriod($navId, $scopeId)
     {
         $publishedOfferIds = [];
         $collection        = $this->replDiscountCollection->create();
+        $collection->addFieldToFilter('scope_id', $storeId);
         $collection->addFieldToFilter('ValidationPeriodId', $navId);
         $collection->getSelect()
             ->columns(['OfferNo', 'LineType', 'LineNumber']);

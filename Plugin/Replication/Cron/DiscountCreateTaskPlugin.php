@@ -8,6 +8,8 @@ use \Ls\Replication\Logger\Logger;
 use \Ls\Replication\Model\ResourceModel\ReplDiscountSetup\CollectionFactory;
 use Magento\CatalogRule\Model\ResourceModel\Rule\CollectionFactory as RuleCollectionFactory;
 use Magento\CatalogRule\Model\RuleFactory;
+use Magento\Framework\Stdlib\DateTime\DateTime;
+use Magento\Framework\Stdlib\DateTime\TimezoneInterface;
 use Magento\Staging\Model\UpdateFactory;
 use Magento\Staging\Api\UpdateRepositoryInterface;
 use Magento\CatalogRule\Api\Data\RuleInterfaceFactory;
@@ -68,6 +70,16 @@ class DiscountCreateTaskPlugin
     public $logger;
 
     /**
+     * @var DateTime
+     */
+    public $dateTime;
+
+    /**
+     * @var TimezoneInterface
+     */
+    public $timezone;
+
+    /**
      * @param CollectionFactory $replDiscountCollection
      * @param UpdateFactory $updateFactory
      * @param UpdateRepositoryInterface $updateRepository
@@ -76,6 +88,8 @@ class DiscountCreateTaskPlugin
      * @param ResourceRule $resourceRule
      * @param RuleFactory $ruleFactory
      * @param VersionManager $versionManager
+     * @param DateTime $dateTime
+     * @param TimezoneInterface $timezone
      * @param Logger $logger
      */
     public function __construct(
@@ -87,6 +101,8 @@ class DiscountCreateTaskPlugin
         ResourceRule $resourceRule,
         RuleFactory $ruleFactory,
         VersionManager $versionManager,
+        DateTime $dateTime,
+        TimezoneInterface $timezone,
         Logger $logger
     ) {
         $this->replDiscountCollection = $replDiscountCollection;
@@ -98,6 +114,8 @@ class DiscountCreateTaskPlugin
         $this->ruleFactory            = $ruleFactory;
         $this->versionManager         = $versionManager;
         $this->logger                 = $logger;
+        $this->timezone               = $timezone;
+        $this->dateTime               = $dateTime;
     }
 
     /**
@@ -122,6 +140,7 @@ class DiscountCreateTaskPlugin
 
         foreach ($discountOffers as $discountOffer) {
             $this->updateValidationDateTime($discountOffer->getOfferNo(), $replValidation);
+            break;
         }
 
         return $result;
@@ -142,16 +161,32 @@ class DiscountCreateTaskPlugin
         if ($ruleCollection->getSize() > 0) {
             foreach ($ruleCollection as $rule) {
                 $ruleId = $rule->getId();
-                $rowId  = $rule->getRowId();
                 $model  = $this->ruleFactory->create();
                 $this->resourceRule->load($model, $ruleId);
                 $activationUpdate = $this->updateFactory->create();
+
+                $startTime        = $replValidation->getStartDate() . " " . $replValidation->getStartTime();
+                $startTimeStamp   = strtotime($startTime);
+                $currentTimeStamp = $this->dateTime->gmtTimestamp();
+
+                if ($startTimeStamp <= $currentTimeStamp) {
+                    //If startTime is a past time, adding 15 minutes buffer from current timestamp
+                    //for offer to start.
+                    $startTimeStamp = $currentTimeStamp + (15 * 60);
+                    $startTime      = $this->dateTime->date('Y-m-d H:i:s A', $startTimeStamp);
+                }
+
+                $startTime = $this->timezone->date(new \DateTime($startTime),null,true,true)->format('Y-m-d\TH:i:s\Z');
+
                 $activationUpdate->setName($rule->getName())
                     ->setStartTime(
-                        $replValidation->getStartDate() . " " . $replValidation->getStartTime()
+                        $startTime
                     )->setIsCampaign(false);
                 if ($replValidation->getEndTime()) {
-                    $activationUpdate->setEndTime($replValidation->getEndDate() . " " . $replValidation->getEndTime());
+                    $endTime = $replValidation->getEndDate() . " " . $replValidation->getEndTime();
+                    $endTime = $this->timezone->date(new \DateTime($endTime),null,true,true)->format('Y-m-d\TH:i:s\Z');
+
+                    $activationUpdate->setEndTime($endTime);
                 }
                 try {
                     $activationUpdate = $this->updateRepository->save($activationUpdate);
@@ -176,7 +211,7 @@ class DiscountCreateTaskPlugin
     {
         $publishedOfferIds = [];
         $collection        = $this->replDiscountCollection->create();
-        $collection->addFieldToFilter('scope_id', $storeId);
+        $collection->addFieldToFilter('scope_id', $scopeId);
         $collection->addFieldToFilter('ValidationPeriodId', $navId);
         $collection->getSelect()
             ->columns(['OfferNo', 'LineType', 'LineNumber']);

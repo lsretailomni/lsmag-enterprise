@@ -140,7 +140,6 @@ class DiscountCreateTaskPlugin
 
         foreach ($discountOffers as $discountOffer) {
             $this->updateValidationDateTime($discountOffer->getOfferNo(), $replValidation);
-            break;
         }
 
         return $result;

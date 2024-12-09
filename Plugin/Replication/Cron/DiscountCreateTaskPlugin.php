@@ -10,6 +10,7 @@ use Magento\CatalogRule\Model\ResourceModel\Rule\CollectionFactory as RuleCollec
 use Magento\CatalogRule\Model\RuleFactory;
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use Magento\Framework\Stdlib\DateTime\TimezoneInterface;
+use Magento\CatalogRuleStaging\Model\Rule\Retriever;
 use Magento\Staging\Model\UpdateFactory;
 use Magento\Staging\Api\UpdateRepositoryInterface;
 use Magento\CatalogRule\Api\Data\RuleInterfaceFactory;
@@ -19,9 +20,6 @@ use Magento\Staging\Model\Entity\HydratorInterface;
 use Magento\CatalogRule\Model\ResourceModel\Rule as ResourceRule;
 use Magento\Staging\Model\VersionManager;
 
-/**
- * DiscountCreateTaskPlugin
- */
 class DiscountCreateTaskPlugin
 {
 
@@ -80,6 +78,16 @@ class DiscountCreateTaskPlugin
     public $timezone;
 
     /**
+     * @var EntityStaging
+     */
+    public $entityStaging;
+
+    /**
+     * @var Retriever
+     */
+    public $entityRetriever;
+
+    /**
      * @param CollectionFactory $replDiscountCollection
      * @param UpdateFactory $updateFactory
      * @param UpdateRepositoryInterface $updateRepository
@@ -90,6 +98,8 @@ class DiscountCreateTaskPlugin
      * @param VersionManager $versionManager
      * @param DateTime $dateTime
      * @param TimezoneInterface $timezone
+     * @param EntityStaging $entityStaging
+     * @param Retriever $entityRetriever
      * @param Logger $logger
      */
     public function __construct(
@@ -103,6 +113,8 @@ class DiscountCreateTaskPlugin
         VersionManager $versionManager,
         DateTime $dateTime,
         TimezoneInterface $timezone,
+        EntityStaging $entityStaging,
+        Retriever $entityRetriever,
         Logger $logger
     ) {
         $this->replDiscountCollection = $replDiscountCollection;
@@ -116,6 +128,8 @@ class DiscountCreateTaskPlugin
         $this->logger                 = $logger;
         $this->timezone               = $timezone;
         $this->dateTime               = $dateTime;
+        $this->entityStaging          = $entityStaging;
+        $this->entityRetriever        = $entityRetriever;
     }
 
     /**
@@ -125,6 +139,7 @@ class DiscountCreateTaskPlugin
      * @param $result
      * @param $replValidation
      * @return mixed
+     * @throws \DateMalformedStringException
      */
     public function afterSave(
         $subject,
@@ -151,11 +166,13 @@ class DiscountCreateTaskPlugin
      * @param $name
      * @param $replValidation
      * @return void
+     * @throws \DateMalformedStringException
      */
     public function updateValidationDateTime($name, $replValidation)
     {
         $ruleCollection = $this->ruleCollectionFactory->create();
         $ruleCollection->addFieldToFilter('name', ['like' => $name . '%']);
+        $ruleCollection->addFieldToFilter('created_in', 1);
 
         if ($ruleCollection->getSize() > 0) {
             foreach ($ruleCollection as $rule) {
@@ -175,7 +192,12 @@ class DiscountCreateTaskPlugin
                     $startTime      = $this->dateTime->date('Y-m-d H:i:s A', $startTimeStamp);
                 }
 
-                $startTime = $this->timezone->date(new \DateTime($startTime),null,true,true)->format('Y-m-d\TH:i:s\Z');
+                $startTime = $this->timezone->date(
+                    new \DateTime($startTime),
+                    null,
+                    false,
+                    true
+                )->format('Y-m-d\TH:i:s\Z');
 
                 $activationUpdate->setName($rule->getName())
                     ->setStartTime(
@@ -183,11 +205,26 @@ class DiscountCreateTaskPlugin
                     )->setIsCampaign(false);
                 if ($replValidation->getEndTime()) {
                     $endTime = $replValidation->getEndDate() . " " . $replValidation->getEndTime();
-                    $endTime = $this->timezone->date(new \DateTime($endTime),null,true,true)->format('Y-m-d\TH:i:s\Z');
+                    $endTime = $this->timezone->date(
+                        new \DateTime($endTime),
+                        null,
+                        false,
+                        true
+                    )->format('Y-m-d\TH:i:s\Z');
 
                     $activationUpdate->setEndTime($endTime);
                 }
                 try {
+
+                    //if not the default value, schedule already exists.
+                    //Unschedule the existing one to update new schedule.
+                    if ($rule->getUpdatedIn() != "2147483647") {
+                        $updateId = $rule->getUpdatedIn();
+                        $this->versionManager->setCurrentVersionId($updateId);
+                        $entity = $this->entityRetriever->getEntity($ruleId);
+                        $this->entityStaging->unschedule($entity, $this->versionManager->getVersion()->getId());
+                    }
+
                     $activationUpdate = $this->updateRepository->save($activationUpdate);
                     $this->versionManager->setCurrentVersionId($activationUpdate->getId());
                     $this->catalogRuleStaging->schedule($model, $activationUpdate->getId());
@@ -213,7 +250,8 @@ class DiscountCreateTaskPlugin
         $collection->addFieldToFilter('scope_id', $scopeId);
         $collection->addFieldToFilter('ValidationPeriodId', $navId);
         $collection->getSelect()
-            ->columns(['OfferNo', 'LineType', 'LineNumber']);
+            ->columns(['OfferNo', 'LineType', 'LineNumber'])
+            ->group('OfferNo');
 
         $collection->addFieldToFilter(
             'Type',

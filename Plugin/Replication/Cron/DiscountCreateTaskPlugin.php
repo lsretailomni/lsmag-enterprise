@@ -3,6 +3,7 @@
 namespace Ls\Commerce\Plugin\Replication\Cron;
 
 use Exception;
+use \Ls\Core\Model\LSR;
 use \Ls\Omni\Client\Ecommerce\Entity\Enum\ReplDiscountType;
 use \Ls\Replication\Logger\Logger;
 use \Ls\Replication\Model\ResourceModel\ReplDiscountSetup\CollectionFactory;
@@ -19,6 +20,8 @@ use Magento\Staging\Model\EntityStaging;
 use Magento\Staging\Model\Entity\HydratorInterface;
 use Magento\CatalogRule\Model\ResourceModel\Rule as ResourceRule;
 use Magento\Staging\Model\VersionManager;
+use Magento\Store\Api\Data\StoreConfigInterface;
+use Magento\Store\Model\ScopeInterface;
 
 class DiscountCreateTaskPlugin
 {
@@ -88,6 +91,16 @@ class DiscountCreateTaskPlugin
     public $entityRetriever;
 
     /**
+     * @var LSR
+     */
+    public $lsr;
+
+    /**
+     * @var StoreConfigInterface
+     */
+    public $storeConfig;
+
+    /**
      * @param CollectionFactory $replDiscountCollection
      * @param UpdateFactory $updateFactory
      * @param UpdateRepositoryInterface $updateRepository
@@ -100,6 +113,8 @@ class DiscountCreateTaskPlugin
      * @param TimezoneInterface $timezone
      * @param EntityStaging $entityStaging
      * @param Retriever $entityRetriever
+     * @param LSR $lsr
+     * @param StoreConfigInterface $storeConfig
      * @param Logger $logger
      */
     public function __construct(
@@ -115,6 +130,8 @@ class DiscountCreateTaskPlugin
         TimezoneInterface $timezone,
         EntityStaging $entityStaging,
         Retriever $entityRetriever,
+        LSR $lsr,
+        StoreConfigInterface $storeConfig,
         Logger $logger
     ) {
         $this->replDiscountCollection = $replDiscountCollection;
@@ -130,6 +147,8 @@ class DiscountCreateTaskPlugin
         $this->dateTime               = $dateTime;
         $this->entityStaging          = $entityStaging;
         $this->entityRetriever        = $entityRetriever;
+        $this->lsr                    = $lsr;
+        $this->storeConfig            = $storeConfig;
     }
 
     /**
@@ -181,19 +200,26 @@ class DiscountCreateTaskPlugin
                 $this->resourceRule->load($model, $ruleId);
                 $activationUpdate = $this->updateFactory->create();
 
-                $startTime        = $replValidation->getStartDate() . " " . $replValidation->getStartTime();
-                $startTimeStamp   = strtotime($startTime);
-                $currentTimeStamp = $this->dateTime->gmtTimestamp();
+                $startTime = $replValidation->getStartDate() . " " . $replValidation->getStartTime();
+                //convert start time from central timezone to UTC timezone
+                // to check start time is past current time or not.
+                $startTimeObj           = $this->convertTimezone($startTime);
+                $startTimeUTC           = $startTimeObj->format('Y-m-d h:i:s A');
+                $startTimeInUtcTimezone = $startTimeObj->getTimestamp();
 
-                if ($startTimeStamp <= $currentTimeStamp) {
-                    //If startTime is a past time, adding 15 minutes buffer from current timestamp
+                //Get Current UTC Timestamp
+                $currentDateTime     = new \DateTime();
+                $currentUtcTimeStamp = $currentDateTime->getTimestamp();
+
+                if ($startTimeInUtcTimezone <= $currentUtcTimeStamp) {
+                    //If startTime is a past time, adding 1 minute buffer from current timestamp
                     //for offer to start.
-                    $startTimeStamp = $currentTimeStamp + (15 * 60);
-                    $startTime      = $this->dateTime->date('Y-m-d H:i:s A', $startTimeStamp);
+                    $startTimeStamp = $currentUtcTimeStamp + (1 * 60);
+                    $startTimeUTC   = $this->dateTime->date('Y-m-d h:i:s A', $startTimeStamp);
                 }
 
                 $startTime = $this->timezone->date(
-                    new \DateTime($startTime),
+                    new \DateTime($startTimeUTC),
                     null,
                     false,
                     true
@@ -204,9 +230,11 @@ class DiscountCreateTaskPlugin
                         $startTime
                     )->setIsCampaign(false);
                 if ($replValidation->getEndTime()) {
-                    $endTime = $replValidation->getEndDate() . " " . $replValidation->getEndTime();
-                    $endTime = $this->timezone->date(
-                        new \DateTime($endTime),
+                    $endTime    = $replValidation->getEndDate() . " " . $replValidation->getEndTime();
+                    $endTimeObj = $this->convertTimezone($endTime);
+                    $endTimeUTC = $endTimeObj->format('Y-m-d h:i:s A');
+                    $endTime    = $this->timezone->date(
+                        new \DateTime($endTimeUTC),
                         null,
                         false,
                         true
@@ -215,7 +243,6 @@ class DiscountCreateTaskPlugin
                     $activationUpdate->setEndTime($endTime);
                 }
                 try {
-
                     //if not the default value, schedule already exists.
                     //Unschedule the existing one to update new schedule.
                     if ($rule->getUpdatedIn() != "2147483647") {
@@ -273,5 +300,42 @@ class DiscountCreateTaskPlugin
             return $collection;
         }
         return $publishedOfferIds;
+    }
+
+    /**
+     * @return array|string
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     */
+    public function getCentralTimeZone()
+    {
+        return $this->lsr->getStoreConfig(
+            LSR::SC_SERVICE_LCY_TIMEZONE,
+            $this->lsr->getCurrentStoreId()
+        );
+    }
+
+    /**
+     * Convert timezone of a date time
+     *
+     * @param $datetime
+     * @param $fromTimezone
+     * @param $toTimezone
+     * @return string
+     * @throws \DateInvalidTimeZoneException
+     * @throws \DateMalformedStringException
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     */
+    public function convertTimezone($datetime, $fromTimezone = null, $toTimezone = null)
+    {
+        $fromTimezone = $fromTimezone ?: $this->getCentralTimeZone();
+        $toTimezone   = $toTimezone ?: 'UTC';
+        // Create a DateTime object with the original datetime and timezone
+        $date = new \DateTime($datetime, new \DateTimeZone($fromTimezone));
+
+        // Set the target timezone
+        $date->setTimezone(new \DateTimeZone($toTimezone));
+
+        // Return the formatted datetime string in the new timezone
+        return $date;
     }
 }

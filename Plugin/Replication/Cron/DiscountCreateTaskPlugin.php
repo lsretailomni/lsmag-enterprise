@@ -197,8 +197,15 @@ class DiscountCreateTaskPlugin
         if ($ruleCollection->getSize() > 0) {
             foreach ($ruleCollection as $rule) {
                 $ruleId = $rule->getId();
-                $model  = $this->ruleFactory->create();
-                $this->resourceRule->load($model, $ruleId);
+                $ruleObj  = $this->ruleFactory->create();
+                $this->resourceRule->load($ruleObj, $ruleId);
+                $ruleObj->setIsActive(false);
+                $ruleObj->save();
+                
+//                $model  = $this->ruleFactory->create();
+//                $this->resourceRule->load($model, $ruleId);
+                
+                
                 $activationUpdate = $this->updateFactory->create();
 
                 $startTime = $replValidation->getStartDate() . " " . $replValidation->getStartTime();
@@ -255,6 +262,9 @@ class DiscountCreateTaskPlugin
 
                     $activationUpdate = $this->updateRepository->save($activationUpdate);
                     $this->versionManager->setCurrentVersionId($activationUpdate->getId());
+                    $model  = $this->ruleFactory->create();
+                    $this->resourceRule->load($model, $ruleId);
+                    $model->setIsActive(true);
                     $this->catalogRuleStaging->schedule($model, $activationUpdate->getId());
                 } catch (Exception $e) {
                     $this->logger->debug($e->getMessage());

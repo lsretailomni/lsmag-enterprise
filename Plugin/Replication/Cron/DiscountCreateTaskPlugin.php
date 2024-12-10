@@ -191,7 +191,8 @@ class DiscountCreateTaskPlugin
     {
         $ruleCollection = $this->ruleCollectionFactory->create();
         $ruleCollection->addFieldToFilter('name', ['like' => $name . '%']);
-        $ruleCollection->addFieldToFilter('created_in', 1);
+        $ruleCollection->addFieldToFilter('created_in', ['eq' => 1]);
+        $ruleCollection->getSelect()->setPart('disable_staging_preview',true); //To prevent staging data in collection
 
         if ($ruleCollection->getSize() > 0) {
             foreach ($ruleCollection as $rule) {

@@ -202,10 +202,6 @@ class DiscountCreateTaskPlugin
                 $ruleObj->setIsActive(false);
                 $ruleObj->save();
                 
-//                $model  = $this->ruleFactory->create();
-//                $this->resourceRule->load($model, $ruleId);
-                
-                
                 $activationUpdate = $this->updateFactory->create();
 
                 $startTime = $replValidation->getStartDate() . " " . $replValidation->getStartTime();

@@ -22,4 +22,7 @@
     <type name="Ls\Replication\Cron\DiscountCreateSetupTask">
         <plugin name="discount_validation_time_sync" type="Ls\Commerce\Plugin\Replication\Cron\DiscountCreateTaskPlugin" sortOrder="10"/>
     </type>
+    <type name="Ls\Replication\Cron\DiscountCreateTask">
+        <plugin name="discount_validation_time_sync" type="Ls\Commerce\Plugin\Replication\Cron\DiscountCreateTaskPlugin" sortOrder="10"/>
+    </type>
 </config>

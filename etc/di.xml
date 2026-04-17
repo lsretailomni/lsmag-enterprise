@@ -25,4 +25,7 @@
     <type name="Ls\Replication\Cron\DiscountCreateTask">
         <plugin name="discount_validation_time_sync" type="Ls\Commerce\Plugin\Replication\Cron\DiscountCreateTaskPlugin" sortOrder="10"/>
     </type>
+    <type name="Ls\Omni\Helper\ItemHelper">
+        <plugin name="ls_commerce_giftcard_compat" type="Ls\Commerce\Plugin\GiftcardCompatibilityPlugin" sortOrder="10"/>
+    </type>
 </config>

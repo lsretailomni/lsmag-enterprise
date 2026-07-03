@@ -16,6 +16,9 @@ use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Api\SearchResults;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\GiftCard\Model\Catalog\Product\Type\Giftcard;
+use Magento\InventoryApi\Api\Data\SourceItemInterface;
+use Magento\InventoryApi\Api\Data\SourceItemInterfaceFactory;
+use Magento\InventoryApi\Api\SourceItemsSaveInterface;
 use Magento\Store\Api\Data\WebsiteInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
@@ -60,6 +63,15 @@ class ProductCreateTaskPluginTest extends TestCase
     /** @var ScopeConfigInterface&MockObject */
     private $scopeConfig;
 
+    /** @var SourceItemInterfaceFactory&MockObject */
+    private $sourceItemFactory;
+
+    /** @var SourceItemsSaveInterface&MockObject */
+    private $sourceItemsSave;
+
+    /** @var SourceItemInterface&MockObject */
+    private $sourceItem;
+
     /** @var ProductCreateTask&MockObject */
     private $subject;
 
@@ -73,11 +85,18 @@ class ProductCreateTaskPluginTest extends TestCase
         $this->logger                = $this->createMock(LoggerInterface::class);
         $this->replicationHelper     = $this->createMock(ReplicationHelper::class);
         $this->scopeConfig           = $this->createMock(ScopeConfigInterface::class);
+        $this->sourceItemFactory     = $this->createMock(SourceItemInterfaceFactory::class);
+        $this->sourceItemsSave       = $this->createMock(SourceItemsSaveInterface::class);
         $this->subject               = $this->createMock(ProductCreateTask::class);
 
         // SearchCriteriaBuilder is fluent.
         $this->searchCriteriaBuilder->method('addFilter')->willReturnSelf();
         $this->searchCriteriaBuilder->method('create')->willReturn($this->createMock(SearchCriteria::class));
+
+        // A single reusable source item is returned by the factory; tests assert on it directly.
+        $this->sourceItem = $this->createMock(SourceItemInterface::class);
+        $this->sourceItemFactory->method('create')->willReturn($this->sourceItem);
+        $this->replicationHelper->method('getSourceItemsSaveObject')->willReturn($this->sourceItemsSave);
 
         $this->plugin = new ProductCreateTaskPlugin(
             $this->lsr,
@@ -87,7 +106,8 @@ class ProductCreateTaskPluginTest extends TestCase
             $this->storeManager,
             $this->logger,
             $this->replicationHelper,
-            $this->scopeConfig
+            $this->scopeConfig,
+            $this->sourceItemFactory
         );
     }
 
@@ -201,14 +221,18 @@ class ProductCreateTaskPluginTest extends TestCase
         $this->assertSame([1, 2], $capturedWebsiteIds);
     }
 
-    public function testDefaultSourceItemRemovedAfterSave(): void
+    public function testAssignsWebsiteSourceInStockAndRemovesDefaultWhenDifferent(): void
     {
         $entry = json_encode([
             ['code' => 'GC01', 'item_type' => 'income_account', 'item_account_no' => 'ACC01'],
         ]);
 
+        // Website 1's stock is served by a custom source (e.g. S0013), not the default source.
         $this->storeManager->method('getWebsites')->willReturn([$this->website(1)]);
         $this->scopeConfig->method('getValue')->willReturn($entry);
+        $this->replicationHelper->method('getSourceCodeFromWebsiteCode')
+            ->with('default', 1)
+            ->willReturn('S0013');
 
         $this->stubNoExistingProduct();
         $this->stubDefaultSource('default');
@@ -216,10 +240,45 @@ class ProductCreateTaskPluginTest extends TestCase
         $product = $this->productMock();
         $this->productFactory->method('create')->willReturn($product);
 
-        // The default source item must be removed for the created product SKU.
+        // The in-stock source item is created on the website's own source, qty 0.
+        $this->sourceItem->expects($this->once())->method('setSourceCode')->with('S0013');
+        $this->sourceItem->expects($this->once())->method('setSku')->with('GC01');
+        $this->sourceItem->expects($this->once())->method('setQuantity')->with(0);
+        $this->sourceItem->expects($this->once())->method('setStatus')->with(SourceItemInterface::STATUS_IN_STOCK);
+
+        // The wrong default source item is removed; the correct source item is saved.
         $this->replicationHelper->expects($this->once())
             ->method('deleteSourceItemsBySku')
             ->with('default', 'GC01');
+        $this->sourceItemsSave->expects($this->once())
+            ->method('execute')
+            ->with([$this->sourceItem]);
+
+        $this->plugin->afterExecute($this->subject, 'ok');
+    }
+
+    public function testKeepsDefaultSourceWhenWebsiteUsesDefaultSource(): void
+    {
+        $entry = json_encode([
+            ['code' => 'GC01', 'item_type' => 'income_account', 'item_account_no' => 'ACC01'],
+        ]);
+
+        // Website 1's stock is served by the default source.
+        $this->storeManager->method('getWebsites')->willReturn([$this->website(1)]);
+        $this->scopeConfig->method('getValue')->willReturn($entry);
+        $this->replicationHelper->method('getSourceCodeFromWebsiteCode')
+            ->with('default', 1)
+            ->willReturn('default');
+
+        $this->stubNoExistingProduct();
+        $this->stubDefaultSource('default');
+
+        $product = $this->productMock();
+        $this->productFactory->method('create')->willReturn($product);
+
+        // Default source is the correct one here, so it must NOT be deleted; source item still saved.
+        $this->replicationHelper->expects($this->never())->method('deleteSourceItemsBySku');
+        $this->sourceItemsSave->expects($this->once())->method('execute');
 
         $this->plugin->afterExecute($this->subject, 'ok');
     }

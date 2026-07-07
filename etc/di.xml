@@ -27,5 +27,32 @@
     </type>
     <type name="Ls\Omni\Helper\ItemHelper">
         <plugin name="ls_commerce_giftcard_compat" type="Ls\Commerce\Plugin\GiftcardCompatibilityPlugin" sortOrder="10"/>
+        <plugin name="ls_commerce_item_helper" type="Ls\Commerce\Plugin\ItemHelperPlugin" sortOrder="10"/>
+    </type>
+
+    <type name="Ls\Omni\Helper\OrderHelper">
+        <plugin name="ls_commerce_order_helper" type="Ls\Commerce\Plugin\OrderHelperPlugin" sortOrder="10"/>
+    </type>
+
+    <type name="Ls\Omni\Helper\BasketHelper">
+        <plugin name="ls_commerce_basket_helper" type="Ls\Commerce\Plugin\BasketHelperPlugin" sortOrder="10"/>
+    </type>
+
+    <type name="Ls\Omni\Observer\SalesObserver">
+        <plugin name="ls_commerce_sales_observer" type="Ls\Commerce\Plugin\SalesObserverPlugin" sortOrder="10"/>
+    </type>
+
+    <type name="Ls\Omni\Helper\Data">
+        <plugin name="ls_commerce_data_helper" type="Ls\Commerce\Plugin\DataHelperPlugin" sortOrder="10"/>
+    </type>
+
+    <type name="Ls\Customer\Block\Order\Items">
+        <plugin name="ls_commerce_order_items" type="Ls\Commerce\Plugin\OrderItemsPlugin" sortOrder="10"/>
+    </type>
+    <type name="Ls\Customer\Block\Order\Custom\Items">
+        <plugin name="ls_commerce_order_custom_items" type="Ls\Commerce\Plugin\OrderItemsPlugin" sortOrder="10"/>
+    </type>
+    <type name="Ls\Customer\Block\Order\Custom\Hyva\Items">
+        <plugin name="ls_commerce_order_hyva_items" type="Ls\Commerce\Plugin\OrderItemsPlugin" sortOrder="10"/>
     </type>
 </config>
